@@ -1,0 +1,154 @@
+---
+title: "Prediction of Late Stage Breast Cancer"
+author: "Aneesh Chandramouli, Jiangnan Lyu, & Zainab Alkhater"
+date: "6/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Goal 
+
+Our goal is to predict which women have advanced (Stage 3) and metastatic (Stage 4) breast cancer. Cancer is staged clinically (before surgery) and pathologically (using details seen durring surgery). Here we will be predicting the clinical staging using all variables that were known before surgery.
+
+### Methods 
+
+#### Subjects
+
+```{r}
+#   named original rds file 'bca'
+analysis_city20200601
+# named the rds file from assignment 4 as 'breastCA_cleaned'
+# now I am naming it 'breastCA'
+# initial cleaning of 'median income' variable
+breastCA <- 
+  bca_almostclean %>%
+  mutate(finalClinicalStage = `Final Clinical Stage`,
+         surgery_type = `Surgery Type`, 
+         tumor_grade = `Tumor Grade`,
+         race_eth = `Race & Ethnicity`) %>%
+  mutate(
+    medianIncome = analysis_city20200601$MedianIncome, 
+    finalClinicalStage = case_when(
+      finalClinicalStage == "3" | finalClinicalStage == "4" ~ "Late", 
+      finalClinicalStage == "1" | finalClinicalStage == "2" | 
+        finalClinicalStage == "5" ~ "Not Late"
+      )
+    ) %>%
+  na.exclude() %>%
+  select(
+    - Race1Desc, - Hispanic, - MedianIncome, `Final Clinical Stage`,
+    - `Surgery Type`, - `Tumor Grade`, - `Race & Ethnicity`,
+    - finalPathStage, - City, - Insurance
+    ) 
+
+# quick exploration of the data
+breastCA %>% skim()
+  
+# normalization of data
+bca_normalize <- 
+  breastCA %>% select(medianIncome, Age) %>% preProcess(., method = "range")
+# creation of entire dataset that includes normalized 'age' and 'median income'
+breastCA_n <- data.frame(predict(bca_normalize, breastCA))
+
+# dummifying of data 
+library(DataExplorer)
+bca_dummy <- 
+  breastCA_n %>%
+  dummify(select = 
+            c('Chemotherapy', 'Facility', 
+              'surgery_type', 'tumor_grade', 
+              'race_eth'))
+
+# creation of 80% training data and 20% testing data
+set.seed(400)
+bca_training_set <- 
+  unlist(createDataPartition(bca_dummy$finalClinicalStage, p = 0.80))
+bca_train <- bca_dummy %>% slice(bca_training_set)  
+bca_test <- bca_dummy %>% slice(- bca_training_set)
+
+# the training and testing sets have about the same percentage of late stage brest CA
+bca_train %>% count(finalClinicalStage) # 15.19%
+bca_test %>% count(finalClinicalStage) # 15.04%
+
+# created labels for training and testing datasets 
+train_labels <- bca_train %>% select(finalClinicalStage) %>% unlist()
+test_labels <- bca_test %>% select(finalClinicalStage) %>% unlist()
+```
+
+#### Data Processing
+
+```{r}
+
+### Jiangnan's creation of her final test and train datasets ###
+# dmy_train<- dummyVars("~.",data=data_train[,-4])
+# trsf_train<-data.frame(predict(dmy_train,newdata = data_train),finalClinicalStage=as.factor(as.numeric(as.factor(data_train$finalClinicalStage))-1)) #Else=0
+# skimr::skim(trsf_train)
+# 
+# dmy_test<- dummyVars("~.",data=data_test[,-4])
+# trsf_test<-data.frame(predict(dmy_test,newdata = data_test),finalClinicalStage=as.factor(as.numeric(as.factor(data_test$finalClinicalStage))-1)) 
+```
+
+#### KNN
+
+```{r}
+### MODEL TRAINING ###
+library(class)
+library(descr)
+# here we are building the kNN and making predictions on test cases
+# for now, we are choosing the square root of n as our "k" value
+set.seed(400)
+ctrl <- 
+  caret::trainControl(method = "repeatedcv", number = 10, repeats = 5)
+bca_knn_fit <- 
+  caret::train(finalClinicalStage ~ .,
+               data = bca_train, 
+               method = "knn", 
+               preProcess = c("scale", "center"), 
+               tuneLength = 10, 
+               trControl = ctrl,
+               metric = "Kappa")
+# we found that k = 5 is the optimal number, so we use it in the knn() #   function below
+bca_test_pred <-
+  knn(train = bca_train,
+      test = bca_test,
+      cl = train_labels,
+      k = 5)
+
+any(is.na(bca_train)) # FALSE
+any(is.na(bca_test)) # FALSE
+
+
+levels(test_pred)[levels(test_pred)=="0"] <- "Not Late"
+levels(test_pred)[levels(test_pred)=="1"] <- "Late"
+levels(test_labels)[levels(test_labels)=="0"] <- "Not Late"
+levels(test_labels)[levels(test_labels)=="1"] <- "Late"
+
+### MODEL EVALUATION ###
+CrossTable(x = test_labels, y = bca_test_pred, prop.chisq = FALSE)
+confusionMatrix(as.factor(bca_test_pred),
+                reference = as.factor(test_labels),
+                positive = "Late")
+
+# library(class)
+# library(descr)
+# set.seed(234)
+# test_pred<-knn(train= trsf_train,
+#                test=trsf_test,
+#                cl=train_labels,
+#                k=7)
+# levels(test_pred)[levels(test_pred)=="0"] <- "Else"
+# levels(test_pred)[levels(test_pred)=="1"] <- "Late"
+# levels(test_labels)[levels(test_labels)=="0"] <- "Else"
+# levels(test_labels)[levels(test_labels)=="1"] <- "Late"
+```
+
+#### Logistic Regression 
+
+```{r}
+
+```
+
+

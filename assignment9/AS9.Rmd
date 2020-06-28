@@ -1,0 +1,98 @@
+---
+title: "AS9"
+author: "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+date: "6/17/2020"
+output: html_document
+---
+
+```{r echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+library(tidyverse)
+library(dplyr)
+library(table1)
+library(recipes)
+library(caret)
+library(randomForestSRC)
+library(randomForest)
+
+set.seed(234)
+
+analysis_city20200601 <- readRDS("./data/analysis_city20200601.rds")
+
+data<-na.omit(analysis_city20200601)
+data<-data[!(data$finalClinicalStage==5),]
+data<-as.data.frame(data)
+
+data<-data%>%
+  mutate(race=case_when(Hispanic==0&Race1Desc=="Black" ~"NHB", Hispanic==0&Race1Desc=="White" ~"NHW", Hispanic==1~"Hispanic" ))%>%
+  rename(Chemotherapy='Chemotherapy(0=none, 1=Neoadjuvant(before surgery) 2=adjuvant(after surgery), 3=only chemotherapy/no surgery, 4=recommended, unnkown if received)')%>%
+  rename(Surgery=`SurgType (0=none, 1=lumpectomy, 2=mastectomy/MRM, 3=unknown)`)%>%
+  select(-Chemotherapy,-Surgery,-Hispanic,-tumorGrade,-Race1Desc,-finalPathStage)  
+
+data$finalClinicalStage[data$finalClinicalStage<3]<-0       # 1 for late stage
+data$finalClinicalStage[data$finalClinicalStage>2]<-1
+
+data<-data%>%mutate(finalClinicalStage=fct_recode(as.factor(finalClinicalStage),"Early"="0","Late"="1"))
+
+
+train<-createDataPartition(data$finalClinicalStage,p=0.8,list=FALSE)
+train_data<-data%>%slice(train)
+test_data<-data%>%slice(-train)
+
+# create dummy variables
+dummy_train <- 
+  recipe( ~ ., data = train_data) %>% 
+  step_dummy(Facility,Insurance,city,race) %>%
+  prep(training = train_data) %>%
+  bake(new_data=train_data)
+
+dummy_test<-
+  recipe( ~ ., data = test_data) %>% 
+  step_dummy(Facility,Insurance,city,race) %>%
+  prep(training = test_data) %>%
+  bake(new_data=test_data)
+
+dummy_train<-as.data.frame(dummy_train)
+dummy_test<-as.data.frame(dummy_test)
+```
+
+
+### Build a random forest model
+```{r message=FALSE,warning=FALSE,fig.width=12}
+set.seed(234)
+m1<-randomForest(as.factor(finalClinicalStage)~.,data=dummy_train,ntree =100,importance = T) 
+importance(m1)
+varImpPlot(m1)
+pred1<-predict(m1,dummy_test)               
+confusionMatrix(pred1,as.factor(dummy_test$finalClinicalStage),positive = "Late") 
+```
+
+### Comments on Random Forest Model
+
+* Our random forest model has pretty good accuracy at 84.76%, meaning that it correctly predicted which cases of breast cancer were late stage and which cases of breast cancer were not late stage.
+* However, our model has a poor Kappa value of 0.0377, meaning that when random chance is taken into account, this algorithm does not have much power in predicting late stage breast cancer.
+* The variable importance can be observed from the plot 
+* Race.NHB (Non-Hispanic Black) and facility.SYL contribute the most to the model's classification accuracy.
+
+### Build a random forest imbalanced model (imbalanced case)
+```{r message=FALSE,warning=FALSE,fig.width=12}
+set.seed(123)
+m2<-imbalanced.rfsrc(as.factor(finalClinicalStage)~.,data=dummy_train,ntree =100,importance = T) 
+vimp.rfsrc(m2)
+randomForestSRC::plot.rfsrc(m2)
+#plot(m2)
+pred2<-predict.rfsrc(m2,dummy_test)               
+confusionMatrix(pred2$class,as.factor(dummy_test$finalClinicalStage),positive = "Late") 
+```
+
+### Comments on the Imbalanced Model
+
+* Based on the results of our imbalanced model, our previous random forest algorithm appears to have done a better job of correctly classifying the cases of late stage and non-late stage breast cancer.
+* When making predictions using the test data, our random forest model had an accuracy fo 84.76%, whereas our imbalanced model had an accuracy of only 65.88%.
+* However, the Kappa value of our imbalanced model was slightly higher, at 0.1718, compared to the Kappa value of our random forest model, which was 0.0377. This indicates that our imbalanced model was slightly better at classifying the breast cancer cases when random chance/guessing was taken into consideration.
+
+
+
+
+
+
+

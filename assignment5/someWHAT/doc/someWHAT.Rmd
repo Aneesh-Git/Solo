@@ -1,0 +1,52 @@
+---
+title: "Calculate the sum of a vector"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Calculate the sum of a vector}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(someWHAT)
+```
+
+# About
+
+Function some( ) takes a vector and returns the total (what could be called the sum of the values).
+Function some() checks to make sure that the user passes data that can be used for a sum.
+
+```{r message=FALSE}
+x<-round(rnorm(3,0,1),1)
+x
+some(x)
+```
+
+If a user does not pass some( ) valid data it will return error messages:
+
+If the input vector contains non-numeric elements, the function execution stops and an error message "Argument `x` should be numeric" is returned.
+
+```{r message=FALSE,error=TRUE}
+x<-c("hello",1,2)
+x
+some(x)
+
+```
+
+If there is any missing elements in the vector, the function execution stops and an error message "Missing values are not allowed" is returned. 
+
+```{r message=FALSE,error=TRUE}
+x<-c(5,NA,1)
+x
+some(x)
+
+```
+
+  

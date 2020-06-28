@@ -1,0 +1,167 @@
+---
+title: "Assignment 6 (or 8): Predicting Late Stage Breast Cancer"
+author: "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+date: "6/11/2020"
+output: 
+  bookdown::html_document2:
+    df_print: kable
+---
+
+## Data Pre-Processing 
+
+```{r message=F,warning=FALSE}
+suppressPackageStartupMessages(library(tidyverse))
+# analysis_city20200601 <-readRDS("~/bst692_group2_breastCA/assignment6/analysis_city20200601.rds")
+data <- analysis_city20200601 %>%
+  rename(Chemotherapy = colnames(analysis_city20200601)[2]) %>%
+  rename(`Surgery Type` = colnames(analysis_city20200601)[3]) %>%
+  mutate(Chemotherapy = as_factor(Chemotherapy)) %>%
+  mutate(Chemotherapy = fct_recode(Chemotherapy, 
+                                   "None" = "0",
+                                   "Neoadjuvant (before surgery)" = "1",
+                                   "Adjuvant (after surgery)" = "2",
+                                   "Only chemotherapy/ No surgery" = "3",
+                                   "Recommended (unknown if received)" = "4")) %>% 
+  mutate(`Surgery Type` = as_factor(`Surgery Type`)) %>%
+  mutate(`Surgery Type` = fct_recode(`Surgery Type`, 
+                                     "None" = "0",
+                                     "Lumpectomy" = "1",
+                                     "Mastectomy/MRM" = "2",
+                                     "Unknown" = "3")) %>%
+  mutate(finalClinicalStage=case_when(finalClinicalStage == "3"~"Late",
+         finalClinicalStage == "4"~"Late",
+         finalClinicalStage == "1"~"Else",
+         finalClinicalStage == "2"~"Else",
+         finalClinicalStage == "5"~"Else",)) %>%
+  na.exclude() %>% 
+  select(- finalPathStage, - city, - tumorGrade, - Race1Desc, - Insurance, 
+         - Facility)
+
+data_process <- 
+    data %>% select(MedianIncome,Age) %>% 
+    caret::preProcess(., method = "range")
+data_transformed <- 
+    data.frame(predict(data_process, data))
+
+# library(skimr)
+skimr::skim(data_transformed)
+# library(DataExplorer)
+data %>% select(Chemotherapy, `Surgery Type`) %>% plot_correlation(c("discrete"))
+```
+  
+## Data Pre-Processing Part 2
+
+```{r message=F,warning=FALSE} 
+#Split to training and test datasets 8:2 ratio
+set.seed(234)
+library(caret)
+trainingSet<-caret::createDataPartition(data_transformed$finalClinicalStage, 
+                                        p = 0.80,
+                                        list=FALSE)
+#traning data
+data_train<-data_transformed %>% slice(trainingSet)
+#test data
+data_test<-data_transformed %>% slice(-trainingSet)
+
+# description of percentages with late stage in two separate tables
+formattable::percent(prop.table(table(data_train$finalClinicalStage)))
+formattable::percent(prop.table(table(data_test$finalClinicalStage)))
+```
+
+## Data Pre-Processing Part 3
+
+```{r message=F,warning=FALSE}
+# dummification of variables
+dmy_train <- dummyVars("~.",data=data_train[,-4])
+trsf_train <- data.frame(predict(dmy_train,newdata = data_train),finalClinicalStage=as.factor(as.numeric(as.factor(data_train$finalClinicalStage))-1)) #Else = 0
+skimr::skim(trsf_train)
+
+dmy_test <- dummyVars("~.",data=data_test[,-4])
+trsf_test <- data.frame(predict(dmy_test,newdata = data_test), finalClinicalStage = as.factor(as.numeric(as.factor(data_test$finalClinicalStage))-1)) # Late = 1
+skimr::skim(trsf_test)
+```
+
+## kNN
+
+```{r message=F,warning=FALSE}
+#true labels
+train_labels <- trsf_train %>% select(finalClinicalStage) %>% unlist()
+test_labels <- trsf_test %>% select(finalClinicalStage) %>% unlist()
+
+set.seed(400)
+ctrl <- caret::trainControl(method = "repeatedcv", 
+                            number = 10,
+                            repeats = 5)
+knn_fit <- caret::train(finalClinicalStage~.,
+                             data = trsf_train,
+                             method = "knn", 
+                             tuneLength = 10,
+                             trControl = ctrl,
+                             metric="Kappa")
+
+# Kappa was used to select the optimal model using the largest value
+# The final value used for the model was k = 19
+knn_fit 
+
+library(class)
+library(descr)
+set.seed(234)
+test_pred <- knn(train=trsf_train,
+               test=trsf_test,
+               cl=train_labels,
+               k = 19)
+
+levels(test_pred)[levels(test_pred)=="0"] <- "Else"
+levels(test_pred)[levels(test_pred)=="1"] <- "Late"
+levels(test_labels)[levels(test_labels)=="0"] <- "Else"
+levels(test_labels)[levels(test_labels)=="1"] <- "Late"
+
+CrossTable(test_labels,test_pred, prop.chisq = FALSE)
+confusionMatrix(as.factor(test_pred),as.factor(test_labels), positive = "Late")
+```
+
+## Comments on KNN accuracy and Kappa
+
+* This study uses a breast cancer dataset and splits. Thus, 80% of the data will be used for training and 20% of the data     will be used for testing. 
+* The confusion matrix displays the actual vs predicted results in the test data, so we can see tables of Accuracy and Kappa   for each machine learning algorithm evaluated which are the mean values for each metric, taken over the population.
+* We observe that the accuracy of the model is approximately 98% which is 18 percentage points above the baseline accuracy   of 80% which is not really that impressive. 
+* The Kappa the other hand shows approximately 95%, which is considered excellent.
+
+## Logistic Regression
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+trsf_train$finalClinicalStage <- 
+  as.factor(as.numeric(trsf_train$finalClinicalStage))
+trsf_test$finalClinicalStage <- 
+  as.factor(as.numeric(trsf_test$finalClinicalStage))
+glm.fit <- glm(finalClinicalStage ~ ., trsf_train, family = "binomial")
+glm.prediction <- predict(glm.fit,trsf_test,type = "response")
+predicted <- as.factor(if_else(glm.prediction <= 0.85, 0, 1))
+truth <- as.factor(as.numeric(trsf_test$finalClinicalStage)-1)
+logreg_cf_matrix <- confusionMatrix(predicted,truth,positive = "1") 
+
+library(broom)
+# summary of the logistic regression model
+tidy(glm.fit)
+# confusion matrix of the logistic model
+tidy(logreg_cf_matrix)
+```
+
+## Comments on Logistic Regression Model
+
+* Overall Results of Logistic Regression Model
+  * For our model, we selected the following variables as our predictors: Hispanic, Chemotherapy, Surgery Type,
+    Age, and Median Income
+  * Based on the beta estimates and p-values displayed below, the most significant predictors for patients
+    who are in the "late" clinical stage are those who are Hispanic (compared to those who are Non-Hispanic),
+    any type of chemotherapy (compared to those who received no chemotherapy), and those who received either no
+    surgery or received a lumpectomy (compared to those who received a mastectomy)
+* Confusion Matrix from Logistic Model
+  * Our confusion matrix reveals an accuracy of 84.86% and a Kappa of zero
+  * Although our accuracy is good, our Kappa is very poor and indicates that our model is no good compared to chance
+    guessing
+
+## Overall Conclusion 
+
+* Our kNN algorithm is notably better at predicting late stage breast cancer, given that the confusion matrix accuracy
+    and Kappa for the kNN are 98.93% and 95.78%, respectively

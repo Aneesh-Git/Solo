@@ -1,0 +1,135 @@
+---
+title: "Breast Cancer Summary"
+author: "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+output: html_document
+header-includes:
+   - \usepackage{setspace}
+   - \doublespacing
+---
+
+<br/> 
+
+```{r message=F,echo=FALSE,results='hide',warning=FALSE}
+# In this step, we renamed and recoded the chemotherapy and surgery type variables 
+dat <- readRDS(
+  "C:/Users/Zainab/Desktop/UM MS BIOSTAT/summar/machien/analysis_city20200601(1).rds"
+  )
+tidydat <- dat %>%
+  rename(Chemotherapy = colnames(dat)[2]) %>%
+  rename(`Surgery Type` = colnames(dat)[3]) %>%
+  mutate(Chemotherapy = as_factor(Chemotherapy)) %>%
+  mutate(Chemotherapy = fct_recode(Chemotherapy, 
+                                   "None" = "0",
+                                   "Neoadjuvant (before surgery)" = "1",
+                                   "Adjuvant (after surgery)" = "2",
+                                   "Only chemotherapy/ No surgery" = "3",
+                                   "Recommended (unknown if received)" = "4")) %>% 
+  mutate(`Surgery Type` = as_factor(`Surgery Type`)) %>%
+  mutate(`Surgery Type` = fct_recode(`Surgery Type`, 
+                                     "None" = "0",
+                                     "Lumpectomy" = "1",
+                                     "Mastectomy/MRM" = "2",
+                                     "Unknown" = "3"))
+```
+
+## The variables that are missing
+
+* Birth place
+* Relationship
+* Individual SES
+* Neighborhood SES
+* Area Deprivation Index
+* Residence in Ethnic Enclave
+* Education
+* Tobacco Use
+* Alcohol Use
+* Obesity
+* No Moderate Physical Activity
+* Age at Menarche
+* Age at First Full-Term Live Birth
+* Number of Live Births
+* Breastfeeding
+* Personal History of Benign Breast Disease
+* Personal History of Ovarian Cancer
+* Family History of Breast Cancer
+* Current or Prior History of Hormone Replacement Therapy (HRT)
+* Comorbidities
+* Receptor Status
+* Treatment
+
+
+<br/> 
+
+```{r echo=FALSE}
+# In this step, we renamed and recoded the final clinical stage and tumor grade variables
+
+breastCancer <- tidydat %>%
+  select(everything(), - Age) %>%
+  map_df(as_factor) %>%
+  mutate(
+    `Final Clinical Stage` = finalClinicalStage,
+    `Tumor Grade` = fct_recode(
+      as_factor(tumorGrade),
+      "Anaplastic" = "anaplastic",
+      "Poorly differentiated / Unknown" = "poor/unknown",
+      "Well/moderately differentiated" = "well/mod"),
+    `Race & Ethnicity` = case_when(
+    Hispanic == 0 & Race1Desc == "Black" ~ 1,
+    Hispanic == 0 & Race1Desc == "White" ~ 2,
+    Hispanic == 1 ~ 3),
+    `Race & Ethnicity` = as_factor(`Race & Ethnicity`),
+    `Race & Ethnicity` = fct_recode(`Race & Ethnicity`,
+                                    "Non-Hispanic Black" = "1",
+                                    "Non-Hispanic White" = "2",
+                                    "Hispanic" = "3")
+  )
+
+# In this step, we created a frequency table in order to observe the frequency counts
+#   and percentages of patients' final clinical stage and tumor grade by race/ethnicity
+library(table1)
+table1(~ `Final Clinical Stage` + `Tumor Grade` | `Race & Ethnicity`, breastCancer)
+```
+
+
+```{r echo=FALSE,fig.align='c'}
+# Here we made both a histogram and violin plot of patients' age at diagnosis by 
+#   race/ethnicity
+
+histo_agedx_race <- 
+  breastCancer %>% 
+  ggplot(aes(x = tidydat$Age, fill = `Race & Ethnicity`)) + 
+  geom_histogram(bins = 11) +
+  labs(
+    fill = "Race/Ethnicity", 
+    title = "Histogram of Patients' Age at Diagnosis by Race/Ethnicity"
+    ) + 
+  xlab("Age at Diagnosis") + ylab("Count")
+vio_agedx_race <- 
+  breastCancer %>% 
+  ggplot(aes(x = `Race & Ethnicity`, y = tidydat$Age)) + 
+  geom_violin(aes(fill = `Race & Ethnicity`)) +
+  labs(
+    fill = "Race/Ethnicity", 
+    title = "Violin Plot of Patients' Age at Diagnosis by Race/Ethnicity"
+    ) + 
+  xlab("Race/Ethnicity") + ylab("Age at Diagnosis")
+```
+
+<br/> 
+
+```{r echo=FALSE}
+histo_agedx_race
+```
+
+<br/> 
+
+```{r echo=FALSE}
+vio_agedx_race
+```
+
+
+
+
+
+
+

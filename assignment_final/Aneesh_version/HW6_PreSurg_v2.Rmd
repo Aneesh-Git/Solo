@@ -1,0 +1,295 @@
+---
+title: "Copy of HW6 with Pre-Surgery Variables Only"
+author: "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+date: "`r.SysDate()`"
+output: 
+  bookdown::html_document2:
+    df_print: kable
+---
+
+```{r}
+######## variable clean up for breast cancer data
+
+########################## Setup
+library(C50)
+library(randomForestSRC)
+library(randomForest)
+library(tidyverse)
+library(conflicted)
+suppressMessages(conflict_prefer("filter", "dplyr"))
+suppressPackageStartupMessages(library(tidyverse))
+library(janitor)
+library(recipes)
+library(caret)
+library(class)
+
+# turn off scientific notation
+options(scipen = 999)
+
+########################## Load data
+
+data.original <- readRDS("./data/analysis_city20200601.rds")
+
+########################## Clean up variables
+
+### Rename chemotherapy & convert it into a factor w/human readable levels
+
+data.clean=data.original %>% 
+rename(Chemotherapy='Chemotherapy(0=none, 1=Neoadjuvant(before surgery) 2=adjuvant(after surgery), 3=only chemotherapy/no surgery, 4=recommended, unnkown if received)') %>% mutate(Chemotherapy=as.factor(Chemotherapy)) %>% 
+mutate(Chemotherapy=fct_recode(Chemotherapy,
+                                "None"="0",
+                                 "Neoadjuvant"="1",
+                                 "Adjuvant"="2",
+                                 "Only Chemotherapy & No Surgery"="3",
+                                 "Recommended"="4"))
+
+
+### Rename surgery type & convert it into a factor w/human readable levels
+data.clean <- data.clean %>%
+  rename(SurgType = "SurgType (0=none, 1=lumpectomy, 2=mastectomy/MRM, 3=unknown)") %>%
+  mutate(SurgType = as_factor(SurgType)) %>%
+  mutate(SurgType = fct_recode(SurgType,
+                               "None" = "0",
+                               "Lumpectomy" = "1",
+                               "Mastectomy/MRM" = "2",
+                               "Unknown" = "3"))
+
+### Recode facility
+data.clean <- data.clean %>% 
+  mutate(Facility = fct_recode(Facility,
+                               "Jackson" = "JMH",
+                               "Sylvester" = "SYL"))
+
+### Recode Tumor grade
+data.clean <- data.clean %>% 
+  mutate(tumorGrade = fct_recode(tumorGrade,
+                                 "Anaplastic" = "anaplastic",
+                                 "Poor/Unknown" = "poor/unknown",
+                                 "Well/Moderate" = "well/mod"))
+
+### Convert finalCLinicalStage into factor with human readable levels
+data.clean <- data.clean %>%
+  mutate(finalClinicalStage = as_factor(finalClinicalStage)) %>%
+  mutate(finalClinicalStage = fct_recode(finalClinicalStage, 
+                                         "I" = "1",
+                                         "II" = "2",
+                                         "III" = "3",
+                                         "IV" = "4",
+                                         "Unknown" = "5"))
+
+### Recode finalPathStafe
+data.clean <- 
+  data.clean %>%
+  mutate(finalPathStage = fct_recode(finalPathStage, 
+                                     "I" = "1", 
+                                     "II" = "2", 
+                                     "III" = "3", 
+                                     "IV" = "4",
+                                     "DCIS" = "dcis",
+                                     "No Surgery/Unknown/Missing" = "no surgery/unknown/missing"))
+
+### Make the race/ethnicity variable
+data.clean <- 
+  data.clean %>%
+  mutate(RaceEthnicity = factor(case_when(
+    Hispanic == 1 ~ "Hispanic",
+    Hispanic == 0 & Race1Desc == "Black" ~ "Non-Hispanic Black",
+    Hispanic == 0 & Race1Desc == "White" ~ "Non-Hispanic White ")))
+
+### Recode to make discrete variables into Factor
+data.clean <- 
+  data.clean %>% 
+  mutate_at(.vars = vars(Hispanic, Insurance, Race1Desc, city), .funs = as_factor) %>% 
+  mutate(Hispanic = fct_recode(Hispanic, 
+                               "Hispanic" = "1",
+                               "Non-Hispanic" = "0")) %>%
+  mutate(Insurance = fct_recode(Insurance, 
+                                "Medicare" = "Medicare",
+                                "Medicaid" = "Medicaid",
+                                "Other" = "OTHER"))
+
+### Drop level of factor that would make dummy code error 
+data.clean <- 
+  data.clean %>% 
+  mutate(finalPathStage = fct_drop(finalPathStage, only = "(Missing)" ))
+
+### make non-missing dataset
+data.complete <-na.omit(data.clean)
+
+########################## Remove multicollinearity 
+data.complete <- data.complete %>% 
+  select(-Hispanic, -Race1Desc)
+
+########################## Make cities into vector for input
+cities <- unique(data.complete$city)
+
+########################## Make into data frame
+data.complete <- as.data.frame(data.complete)
+cities <- as.data.frame(cities)
+```
+ 
+ 
+```{r}
+##################### MAKE DATA FOR PREDICTION
+
+### Recode outcome
+
+data.pred <- 
+  data.complete %>% 
+  mutate(finalClinicalStage = factor(case_when(
+    finalClinicalStage == "I" ~ "Early Stage",
+    finalClinicalStage == "II" ~ "Early Stage",
+    finalClinicalStage == "III" ~ "Late Stage",
+    finalClinicalStage == "IV" ~ "Late Stage")))
+```
+ 
+
+```{r}
+##################### MAKE DATA FOR PREDICTION - PRESURG
+
+########################## Keep pre-surgery variables
+
+data.pred.pre <- data.pred %>% 
+  select(-finalPathStage, -tumorGrade, -SurgType, -Chemotherapy)
+data.pred.pre <- na.omit(data.pred.pre)
+
+########################## Split data for pre-surg variables
+
+set.seed(123)
+trainingSet1 <- createDataPartition(data.pred.pre$finalClinicalStage, p = 0.8, list= FALSE)
+
+### training data
+data.train.pre <- data.pred.pre %>% slice(trainingSet1)
+
+### test data
+data.test.pre <- data.pred.pre %>% slice(-trainingSet1)
+
+formattable::percent(prop.table(table(data.train.pre$finalClinicalStage)))
+formattable::percent(prop.table(table(data.test.pre$finalClinicalStage)))
+
+###### For pre dummy variables
+
+train.pre.dummy <- 
+  data.train.pre %>% 
+  recipe(finalClinicalStage~ ., data=data.train.pre) %>%  
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  prep(training = data.train.pre) %>% 
+  juice()
+
+test.pre.dummy <- 
+  data.test.pre %>% 
+  recipe(finalClinicalStage~ .,data=data.test.pre) %>%  
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  prep(training = data.test.pre) %>% 
+  juice()
+
+knn.test.pre <- test.pre.dummy
+knn.train.pre <- train.pre.dummy
+
+knn.test.pre$finalClinicalStage <- (as.numeric(as.factor(knn.test.pre$finalClinicalStage))-1)
+knn.train.pre$finalClinicalStage <- (as.numeric(as.factor(knn.train.pre$finalClinicalStage))-1)
+
+
+########################## Split data for all variables
+
+data.pred <- na.omit(data.pred)
+
+set.seed(123)
+trainingSet2 <- 
+  createDataPartition(data.pred$finalClinicalStage, p = 0.8, list = FALSE)
+
+### training data
+data.train.all <- data.pred %>% slice(trainingSet2)
+
+### test data
+data.test.all <- 
+  data.pred %>% 
+  slice(-trainingSet2)
+
+formattable::percent(prop.table(table(data.train.all$finalClinicalStage)))
+formattable::percent(prop.table(table(data.test.all$finalClinicalStage)))
+
+###### For all dummy variables
+train.all.dummy <- 
+  data.train.all %>% 
+  recipe(finalClinicalStage ~ .) %>%  
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  prep(training = data.train.all) %>% 
+  juice()
+
+test.all.dummy <- 
+  data.test.all %>% 
+  recipe(finalClinicalStage ~ .) %>%  
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  prep(training = data.test.all) %>% 
+  juice()
+
+knn.test.all <- test.all.dummy
+knn.train.all <- train.all.dummy
+
+knn.test.all$finalClinicalStage <- (as.numeric(as.factor(knn.test.all$finalClinicalStage))-1)
+knn.train.all$finalClinicalStage <- (as.numeric(as.factor(knn.train.all$finalClinicalStage))-1)
+```
+
+## kNN
+
+```{r message=F, warning=FALSE}
+#true labels
+train_labels <- knn.train.all %>% select(finalClinicalStage) %>% unlist()
+test_labels <- knn.test.all %>% select(finalClinicalStage) %>% unlist()
+
+set.seed(400)
+ctrl <- caret::trainControl(method = "repeatedcv", 
+                            number = 10,
+                            repeats = 5)
+knn_fit <- caret::train(finalClinicalStage ~ .,
+                             data = knn.train.all,
+                             method = "knn", 
+                             tuneLength = 10,
+                             trControl = ctrl,
+                             metric = "Kappa")
+knn_fit # best at K = 15 when considering ONLY the pre-surgery variables! 
+
+library(class)
+library(descr)
+set.seed(234)
+
+test_pred <- knn(train = knn.train.all,
+               test = knn.test.all,
+               cl = train_labels,
+               k = 15)
+
+levels(test_pred)[levels(test_pred)=="0"] <- "Else"
+levels(test_pred)[levels(test_pred)=="1"] <- "Late"
+levels(test_labels)[levels(test_labels)=="0"] <- "Else"
+levels(test_labels)[levels(test_labels)=="1"] <- "Late"
+
+CrossTable(test_labels, test_pred, prop.chisq = FALSE)
+confusionMatrix(as.factor(test_pred), as.factor(test_labels), positive = "Late")
+
+knn_presurg <- table(test_labels, test_pred)
+```
+
+## Use logistic regression
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+trsf_train$finalClinicalStage <- 
+  as.factor(as.numeric(trsf_train$finalClinicalStage))
+trsf_test$finalClinicalStage <- 
+  as.factor(as.numeric(trsf_test$finalClinicalStage))
+glm.fit <- glm(finalClinicalStage ~ ., trsf_train, family = "binomial")
+summary(glm.fit)
+glm.prediction <- predict(glm.fit, trsf_test, type = "response")
+predicted <- as.factor(if_else(glm.prediction <= 0.85, 0, 1))
+truth <- as.factor(as.numeric(trsf_test$finalClinicalStage)-1)
+confusionMatrix(predicted, truth, positive = "1") #the kNN Kappa was 0.9422, so logistic model performs worse
+```
+
+## Saving Data
+
+```{r}
+# save.image("allofassignment6.Rdata")
+```
+
+
+

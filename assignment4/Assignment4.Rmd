@@ -1,0 +1,60 @@
+---
+title: "Assignment 4"
+author: "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+date: "6/5/2020"
+output: html_document
+---
+
+## We show an overall summary of the variables
+
+```{r message=F,echo=FALSE, warning=FALSE}
+
+#table of data summary
+introduce(data)
+#Bar plot of data summary
+plot_intro(tidydat)
+
+#plot structure
+plot_str(tidydat) 
+plot_str(tidydat, type = "radial")
+
+#let's look at just missing defaults(5%, 40% 80%)
+plot_missing(tidydat)
+
+#distribution of our continuous vars (defaults to 4 x 4)
+plot_histogram(tidydat, ncol = 2)
+#plot skewed data on a log scale
+plot_histogram(tidydat,  ncol = 2, scale_x = "log10")
+
+```
+
+## We generated a correlation matrix between 2 variables
+
+```{r message=F,echo=FALSE, warning=FALSE}
+#overall correlation heat map
+plot_correlation(data, type = "continuous")
+
+```
+
+## We generated a general report
+
+```{r message=F,echo=FALSE, warning=FALSE}
+
+#one - line report
+create_report(data)
+
+```
+
+## We show a publishable table describing the race and final clinical stage
+
+```{r message=F,echo=FALSE, warning=FALSE}
+
+data %>% 
+  tabyl(Race1Desc, finalClinicalStage) %>% 
+  adorn_totals(where = c("row","col")) %>% 
+  adorn_percentages(denominator = "col") %>% 
+  adorn_pct_formatting(digits = 0, affix_sign = TRUE) %>% 
+  #to get count and percentages
+  adorn_ns(position = "front")
+
+```

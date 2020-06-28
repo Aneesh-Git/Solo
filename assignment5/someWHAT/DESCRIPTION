@@ -1,0 +1,20 @@
+Package: someWHAT
+Title: Calculate the sum of a vector 
+Version: 0.0.1
+Authors@R: 
+    person(given = "Jiangnan",
+           family = "Lyu",
+           role = c("aut", "cre"),
+           email = "jxl686@miami.edu",
+           comment = c(ORCID = "0000-0002-7772-5857"))
+Description: This package contains the some() function that returns the sum of a vector elements. 
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.0
+Suggests: 
+    testthat,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

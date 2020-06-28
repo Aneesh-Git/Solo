@@ -1,0 +1,156 @@
+---
+title: "Predicting Breast Cancer"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    theme: bootstrap
+    social: ["menu"]
+    source_code: embed
+runtime: shiny 
+---
+
+```{r setup, include=FALSE}
+# loaded all necessary pacakges for this final assignment
+suppressPackageStartupMessages(library(tidyverse))
+library(flexdashboard) 
+library(shiny)
+library(DataExplorer)
+library(janitor)
+library(skimr)
+library(leaflet)
+library(sp)
+library(sf)
+library(rgdal)
+
+# loaded necessary datasets 
+bca_cleaned <- readRDS("./assignment_final/data/bca_cleaned.rds")
+income_insurance <- readRDS("./assignment_final/data/income_insurance.rds")
+
+# created character vector of 25 places in Miami-Dade county from assignment 4
+cities <- bca_cleaned %>% select(city) %>% unique()
+
+# created reactive function for bca_cleaned
+bca_react <- reactive({
+  bca_cleaned %>% filter(city == input$cityname)
+  })
+# non-reactive version is just the "bca_cleaned" object
+
+# created reactive and non-reactive versions of "no insurance" vector
+insur_react <- reactive({
+    str_remove(income_insurance$NAME, ", Florida") %>%
+    as_tibble() %>%
+    rename(city = value) %>%
+    filter(city == input$cityname)
+})
+# insur <- 
+#   income_insurance %>%
+#   str_remove(income_insurance$NAME, ", Florida") %>%
+#   as_tibble() %>%
+#   rename(city = value)
+```
+
+General Information
+================================
+
+```{r}
+selectInput(
+   "cityname", label = h3("Select a city:"), 
+    choices = cities, 
+    selected = "Pembroke Pines city"
+   )
+```
+
+Column {.tabset .tabset-fade}
+--------------------------------
+    
+### Basic Information Plot 
+    
+```{r}
+renderPlot({
+  plot_intro(bca_react())
+  })
+```
+
+### Histograms 
+
+```{r}
+renderPlot({
+  plot_histogram(bca_react())
+  })
+```
+
+### Correlation Heatmap 
+
+```{r}
+renderPlot({
+  plot_correlation(bca_react(), type = "continuous")
+  })
+```
+
+### About this Section
+
+Modeling
+================================
+
+Column {.tabset .tabset-fade}
+--------------------------------
+
+```{r}
+# selectInput(
+#   inputId = "algorithm", label = "Select the model you want to display:", 
+#   choices = c("K-nearest Neighbors", "Logistic Regression", 
+#               "Classification Tree", "Random Forest"), 
+#   multiple = FALSE, 
+#   selectize = FALSE
+#   )
+
+# textInput("algorithm", label = "Select a model:", value = "K-Nearest Neighbors")
+```
+
+### Predicting Late-Stage Breast Cancer Using ONLY Pre-Surgery Variables
+
+```{r}
+
+```
+
+### Predicting Late-Stage Breast Cancer Using ALL Variables
+
+```{r}
+
+```
+
+### About this Section
+
+Insurance Map
+================================
+
+```{r}
+# insur <- as.data.frame(insur)
+# insur_sp <- sf::st_as_sf(insur) # trying to convert to a spatial dataframe but it's not working...
+# renderLeaflet({
+#   pal <- colorNumeric("viridis", NULL)
+#   insur_sp %>%
+#   leaflet() %>%
+#     addTiles() %>% #default is OpenStreetMap
+#     clearShapes() %>%
+#     addPolygons(stroke = FALSE, smoothFactor = 0, fillColor = ~pal(no_insurance), 
+#                 fillOpacity = 0.7)
+#     setView(lng = 27.6648, lat = 81.5158, zoom = 20) %>% 
+#     addMarkers(lng = 27.6648, lat = 81.5158) #ESB
+# })
+```
+
+### About this Section
+
+Summary Information
+=================================
+
+```{r}
+
+
+```
+
+
+
+

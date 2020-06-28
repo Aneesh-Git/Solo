@@ -1,0 +1,134 @@
+---
+title: "Assignment 9"
+author: "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+date: "6/11/2020"
+output: 
+  bookdown::html_document2:
+    df_print: kable
+---
+
+```{r message=F,warning=FALSE}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(DataExplorer))
+suppressPackageStartupMessages(library(janitor))
+suppressPackageStartupMessages(library(skimr))
+analysis_city20200601 <- readRDS("./data/analysis_city20200601.rds")
+data <- analysis_city20200601 %>%
+  rename(Chemotherapy = `Chemotherapy(0=none, 1=Neoadjuvant(before surgery) 2=adjuvant(after surgery), 3=only chemotherapy/no surgery, 4=recommended, unnkown if received)`) %>%
+  rename(`Surgery Type` = `SurgType (0=none, 1=lumpectomy, 2=mastectomy/MRM, 3=unknown)`) %>%
+  mutate(Chemotherapy = as_factor(Chemotherapy)) %>%
+  mutate(Chemotherapy = fct_recode(Chemotherapy, 
+                                   "None" = "0",
+                                   "Neoadjuvant (before surgery)" = "1",
+                                   "Adjuvant (after surgery)" = "2",
+                                   "Only chemotherapy/ No surgery" = "3",
+                                   "Recommended (unknown if received)" = "4")) %>% 
+  mutate(`Surgery Type` = as_factor(`Surgery Type`)) %>%
+  mutate(`Surgery Type` = fct_recode(`Surgery Type`, 
+                                     "None" = "0", 
+                                     "Lumpectomy" = "1",
+                                     "Mastectomy/MRM" = "2",
+                                     "Unknown" = "3")) %>%
+  mutate(finalClinicalStage = case_when(finalClinicalStage == "3" ~ "Late", 
+         finalClinicalStage == "4"~"Late",
+         finalClinicalStage == "1"~"Else",
+         finalClinicalStage == "2"~"Else",
+         finalClinicalStage == "5"~"Else",)) %>%
+  na.exclude() %>% 
+  select(- finalPathStage, - city, - tumorGrade, - Race1Desc, - Insurance, 
+         - Facility)
+
+data_process <- data %>% select(MedianIncome,Age) %>% caret::preProcess(., method="range")
+data_transformed <- data.frame(predict(data_process,data))
+library(skimr)
+skimr::skim(data_transformed)
+```
+  
+## Subjects 
+
+```{r message=FALSE, warning=FALSE}
+# Split to training and test datasets 8:2 ratio
+set.seed(234)
+library(caret)
+trainingSet <- caret::createDataPartition(data_transformed$finalClinicalStage, 
+                                        p = 0.80,
+                                        list = FALSE)
+#traning
+data_train <- data_transformed %>% slice(trainingSet)
+#test
+data_test <- data_transformed %>% slice(- trainingSet)
+#ratio of late stage (3 and 4) in both datasets
+#sum(data_train$finalClinicalStage=="Late")/dim(data_train)[1] #0.1513053
+#sum(data_test$finalClinicalStage=="Late")/dim(data_test)[1] #0.1513859
+formattable::percent(prop.table(table(data_train$finalClinicalStage)))
+formattable::percent(prop.table(table(data_test$finalClinicalStage)))
+```
+
+## Dummy code 
+
+```{r message=F,warning=FALSE}
+dmy_train <- dummyVars("~.",data=data_train[,-4])
+trsf_train <- data.frame(predict(dmy_train, newdata = data_train), finalClinicalStage = as.factor(as.numeric(as.factor(data_train$finalClinicalStage))-1)) # Else = 0
+skimr::skim(trsf_train)
+
+dmy_test <- dummyVars("~.",data=data_test[,-4])
+trsf_test <- data.frame(predict(dmy_test, newdata = data_test), finalClinicalStage = as.factor(as.numeric(as.factor(data_test$finalClinicalStage))-1)) # Late = 1
+skim(trsf_test)
+```
+
+## kNN
+
+```{r message=F,warning=FALSE}
+#true labels
+train_labels <- trsf_train %>% select(finalClinicalStage) %>% unlist()
+test_labels <- trsf_test %>% select(finalClinicalStage) %>% unlist()
+
+set.seed(400)
+ctrl <- caret::trainControl(method = "repeatedcv", 
+                            number = 10,
+                            repeats = 5)
+knn_fit <- caret::train(finalClinicalStage ~ .,
+                             data = trsf_train,
+                             method = "knn", 
+                             tuneLength = 10,
+                             trControl = ctrl,
+                             metric = "Kappa")
+knn_fit #best at K = 19
+
+library(class)
+library(descr)
+set.seed(234)
+test_pred <- knn(train = trsf_train,
+               test = trsf_test,
+               cl = train_labels,
+               k = 19)
+levels(test_pred)[levels(test_pred)=="0"] <- "Else"
+levels(test_pred)[levels(test_pred)=="1"] <- "Late"
+levels(test_labels)[levels(test_labels)=="0"] <- "Else"
+levels(test_labels)[levels(test_labels)=="1"] <- "Late"
+
+CrossTable(test_labels,test_pred, prop.chisq = FALSE)
+confusionMatrix(as.factor(test_pred),as.factor(test_labels),positive = "Late")
+```
+
+## Use logistic regression
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+trsf_train$finalClinicalStage <- as.factor(as.numeric(trsf_train$finalClinicalStage))
+trsf_test$finalClinicalStage <- as.factor(as.numeric(trsf_test$finalClinicalStage))
+glm.fit <- glm(finalClinicalStage~.,trsf_train,family = "binomial")
+summary(glm.fit)
+glm.prediction <- predict(glm.fit, trsf_test, type = "response")
+predicted <- as.factor(if_else(glm.prediction <= 0.85, 0, 1))
+truth <- as.factor(as.numeric(trsf_test$finalClinicalStage)-1)
+confusionMatrix(predicted, truth, positive = "1") #the kNN Kappa was 0.9422, so logistic model performs worse
+```
+
+## Saving Data
+
+```{r}
+save.image("allofassignment6.Rdata")
+```
+
+
+

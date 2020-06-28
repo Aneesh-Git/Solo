@@ -1,0 +1,75 @@
+---
+title: "Assignment 3"
+author: "Aneesh Chandramouli, Jiangnan Lyu, & Zainab Alkhater"
+date: "6/2/2020"
+output: html_document
+---
+
+```{r setup, include = FALSE, cache = FALSE}
+knitr::opts_chunk$set(eval = FALSE, echo = FALSE, error = TRUE)
+```
+
+
+```{r}
+library(tidycensus)
+library(sqldf)
+#FYI - if you do not want to manually add your API key run:
+# tidycensus::census_api_key('key', install = TRUE)
+#specifically, from the American Community Survey 5-year estimates
+#documentation on the difference between the various census tables:
+# https://www.census.gov/data/developers/data-sets/acs-5year.html
+```
+
+
+```{r}
+# extracted tables containing the median household income and number of uninsured people and 
+#   filtered by the major cities of Florida
+med_house_inc <- 
+  get_acs(geography = "place", variables = "S1901_C01_012", year = 2018, state = "FL")
+uninsured <- 
+  get_acs(geography = "place", variables = "S2701_C04_001", year = 2018, state = "FL")
+
+# cleaned up both datasets further to prepare for the join
+medhouseinc_final <-
+  med_house_inc %>%
+  rename(median_income = estimate, mhi_moe = moe) %>%
+  select(- variable)
+uninsured_final <-
+  uninsured %>%
+  rename(no_insurance = estimate, uninsured_moe = moe) %>%
+  select (- variable)
+
+# joined the two tables together 
+inc_insur_join <-
+  sqldf(
+  "SELECT m.NAME, m.median_income, u.no_insurance
+   FROM medhouseinc_final m
+    LEFT JOIN uninsured_final u
+      ON m.NAME = u.NAME
+  ")
+
+# created character vector of places that we want to filter for 
+places <- 
+  c("Miami city", "Miami Beach city", "Davie town", "Hialeah Gardens city", 
+    "Coral Springs city", "Doral city", "Pinecrest village", "Fort Lauderdale city", 
+    "Coral Gables city", "Aventura city", "Miramar city", "Wilton Manors city",
+    "Boca Raton city", "Palm Beach town", "Juno Beach town", "Belle Glade city", 
+    "Palm Beach Gardens city", "Royal Palm Beach village", "Key West city", 
+    "Opa-locka city", "Cutler Bay town", "Homestead city", "Sweetwater city", 
+    "Pembroke Pines city", "Sunrise city")
+places_full <- paste0(places, ", Florida")
+
+# turned character vector into tibble format for filtering 
+places_final <- 
+  places_full %>% 
+  as_tibble() %>% 
+  rename(NAME = value) 
+
+# filtered newly joined dataset by all the cities in the character vector created above
+inc_insur_final <- 
+  inc_insur_join %>%
+  filter(NAME %in% places_final$NAME)
+```
+
+
+

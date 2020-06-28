@@ -1,0 +1,85 @@
+---
+title:  "Aneesh Chandramouli, Jiangnan Lyu, Zainab Alkhater"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    social: ["twitter"]
+    source_code: https://github.com/Aneesh-Git/bst692_group2_breastCA
+date: "`r Sys.Date()`"
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+library(dplyr)
+library(png)
+library(knitr)
+library(flexdashboard)
+library(conflicted) 
+suppressMessages(conflict_prefer("filter", "dplyr")) 
+suppressPackageStartupMessages(library(tidyverse)) 
+library(DataExplorer)
+us_counties <- read_csv("~/Documents/bst692/covid-19-data/us-counties.csv")
+fl<-us_counties %>%
+    filter(state=="Florida")
+pos<-tapply(fl$cases,fl$county,max) #cumulative cases by county
+death<-tapply(fl$deaths,fl$county,max) #cumulative deaths by county
+case_by_date<-as.data.frame(tapply(fl$cases,fl$date,sum)) #cumulative cases by date
+```
+
+Analysis
+=======================================================================
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+
+### Total Confirmed Positive
+```{r }
+renderValueBox({valueBox(sum(pos), icon="fa-users")})
+```
+
+
+### Total Confirmed Deaths
+```{r }
+renderValueBox({valueBox(sum(death), icon="fal fa-users",color="darkgrey")})
+```
+
+### County with the Highest Number of Cases & Deaths
+```{r }
+renderValueBox({
+  case_death<-cbind(pos,death)
+  most<-names(which.max(rowSums(case_death)))
+  valueBox(most, icon="fal fa-exclamation-triangle",color="warning")
+})
+```
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### Rate of Cases since March 1
+
+```{r fig.width=8, fig.height=6}
+dates<-as.Date(rownames(case_by_date))
+frame<-cbind(dates,remove_rownames(case_by_date))
+colnames(frame)<-c("Dates","Cases")
+ggplot(data = frame) + 
+  theme_light()+
+  geom_line(mapping = aes(x = Dates, y = Cases),color='Red', size=1.5)+
+  scale_x_date(date_labels="%b %d",date_breaks  ="15 day")
+```
+
+### What are the Symptoms?
+
+```{r fig.width=8, fig.height=6}
+knitr::include_graphics("https://flashinfong.com/wp-content/uploads/2020/03/maxresdefault-1.jpg")
+```
+
+Raw Data
+=======================================================================
+```{r table}
+DT::datatable(fl, options = list(
+  pagelength =30,
+  height = "600px"
+))
+```

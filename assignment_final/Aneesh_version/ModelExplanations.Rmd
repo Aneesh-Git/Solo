@@ -1,0 +1,89 @@
+---
+title: "Model Explanations"
+author: "Aneesh Chandramouli, Jiangnan Lyu, & Zainab Alkhater"
+date: "6/25/2020"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r explanations, echo=FALSE}
+# EXPLANATIONS for Classification Tree and Random Forest Model
+
+# CLASSIFICATION TREE
+textOutput("cart")
+
+output$cart <- renderText({
+  text <- 
+    "Here we used a method known as a 'classification tree'. In this method, we started out with our 
+entire dataset and divided it into several subsets of data. Every divide, or split, was made based on a binary variable, where the only reponses were 'Yes' or 'No'. The very first split was made using the binary variable that best separated women with late-stage breast cancer and women who were not in the late stage. We then used the next best binary variable (in terms of separating the late and non-late stage cases) to do our second split. We continued splitting the data in this exact manner until nearly all of the individuals within a subgroup were part of the SAME CLASS. In other words, we kept dividing our data into subests until we had samples where almost all women were either late stage or non-late stage (also known as a nearly 'pure' or 'homogenous' samples)."
+})
+
+# RANDOM FOREST
+textOutput("rforest")
+
+output$rforest <- renderText({
+  text2 <- 
+    "Here we used a method known as a 'Random Forest'. Although classification trees are easy to use and interpret, they have one important problem: the amount of times you split your data heavily determines its predictive performance. Split too much and we would overfit the data; the model would fit on noise, and predictions are thrown off. Split too little and we would underfit the data; the model won't capture enough of the data’s characteristics and wouldn't be able to distinguish between the two classes. The problem of how much to split is a problem that arises far too often. This where a random forest comes into play. At each binary split of the data, we randomly select a subset of variables that can potentially be selected to be split on, rather than evaluate all of the predictor variables. Every time we randomly select some variables, we choose the best feature/variable out of this random subset and keep splitting until we have a tree with the most 'pure' samples possible. We do this over and over and until we produce many trees. Once we have lots of trees, we then merge all of them together. This prevents overfitting of the data and allows us to determine a stable predictor."
+})
+```
+
+
+```{r}
+# INTERPRETATIONS for Classification Tree and Random Forest Model
+```
+
+
+
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=FALSE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+
