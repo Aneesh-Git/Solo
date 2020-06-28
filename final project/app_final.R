@@ -35,9 +35,9 @@ ui <- fluidPage(theme = shinythemes::shinytheme("sandstone"), # Application titl
                                       br(),
                                       h4("Our fun-filled journey will consist of the following:"),
                                       h4(tags$ul((tags$li("Exploring our data")))),
-                                         h4(tags$ul((tags$li("Visualizing the number of uninsured people within the state of Florida")))),
-                                            h4(tags$ul((tags$li("Examining the results of the models of our breast cancer predictions")))),
-                                               h4(tags$ul((tags$li("Summarizing the key points from our results")))),
+                                      h4(tags$ul((tags$li("Visualizing the number of uninsured people within the state of Florida")))),
+                                      h4(tags$ul((tags$li("Examining the results of the models of our breast cancer predictions")))),
+                                      h4(tags$ul((tags$li("Summarizing the key points from our results")))),
                                       br(),
                                       h4("For your reference, we have included a section where we explain what each of our machine-learning 
                                          models are and the concepts behind them."),
@@ -56,7 +56,7 @@ ui <- fluidPage(theme = shinythemes::shinytheme("sandstone"), # Application titl
                                       sidebarLayout(
                                         sidebarPanel(
                                           selectInput("CityName",
-                                                      choices = cities,
+                                                      choices = c(cities, "All cities"),
                                                       label = "Please Choose a City"),
                                           actionButton("go","Submit")
                                         ),
@@ -69,10 +69,6 @@ ui <- fluidPage(theme = shinythemes::shinytheme("sandstone"), # Application titl
                                           h4("Table"),
                                           br(),
                                           tableOutput("t"), ########## ADD TABLE
-                                          
-                                          h4("Principal Components of Data Summary"),
-                                          br(),
-                                          plotOutput("prcomp"),
                                           
                                           h4("Distribution of Continuous/Discrete Variables: Age, Median Income, Final Clinical Stage"),
                                           br(),
@@ -212,96 +208,105 @@ ui <- fluidPage(theme = shinythemes::shinytheme("sandstone"), # Application titl
                              ############## Explanation for the models tab #########################################
                              
                              tabPanel("Model Explanations",
-                                      h2("The algorithms we used:"),
-                                      br(),
-                                      h2("1) k-Nearest Neighbors:"),
-                                      tags$img(src = "https://www.researchgate.net/profile/Saleh_Alaliyat/publication/267953942/figure/fig14/AS:295388776026147@1447437580523/K-nearest-neighbor-algorithm-illustration-The-green-circle-is-the-sample-which-is-to-be.png",
-                                               width = 300, height = 200, align = "right"),
-                                      h4(tags$ul((tags$li("The goal is to check how closely related a new subject/case is to one of the currently known categories of the outcome")))),
-                                      h4(tags$ul((tags$li("The number of nearest neighbors we want to check is defined by the value 'k'")))),
-                                      h4(tags$ul((tags$li("The known category with the most close neighbors to the new subject/case is the one assigned to this subject")))),
-                                      br(),
-                                      h3("Strengths and Weaknesses:"),
-                                      h4(tags$ul((tags$li("Especially appropriate if the model contains the numeric variables")))),
-                                      h4(tags$ul((tags$li("Easy to implement")))),
-                                      h4(tags$ul((tags$li("Works seamlessely as new data is added")))),
-                                      h4(tags$ul((tags$li("Virtually no training period required")))),
-                                      br(),
-                                      actionLink("link", label="Learn More about k-Nearest Neighbors", icon = icon("th"), onclick ="window.open('https://towardsdatascience.com/interpretation-of-kappa-values-2acd1ca7b18f', '_blank')"),
-                                      br(),
-                                      h2("2) Logistic Regression:"),
-                                      tags$img(src = "https://lh3.googleusercontent.com/proxy/Sth9Netq6NSlv82nJVLxgC9y1BgviUdmRkVbSTw5NT7DCObjl2GOfQL5EXkI3m8L-MFPkBffx07lJ9oMjA8LbFGH8fExFE7U10cMVbBDakVwq2rdKBZr7vXmBWVg2Cs4wh6U8B_R0LikpMsZ7B2bK6xdlt1hkdo",
-                                               width = 200, height = 200, align = "right"),
-                                      h4("Binary logistic regression is a predictive modeling algorithm that is used when the outcome
-                                        variable is binary. That is, it can take only two values like 1 or
-                                        0 which are that in our model 1 for late stage of breast cancer and 0 for else
-                                        stage . The aim here is to determine a mathematical equation that can be used to
-                                        predict the probability of late clinical stage of breast cancer for each patient.
-                                        Once the equation is established, it can be used to predict the clinical stage of
-                                        breast cancer."),
-                                      br(),
-                                      h3("Strengths and Weaknesses:"),
-                                      h4("The logistic regression is very efficient, does not require too many computational resources,
-                                      highly interpretable, it doesn’t require input features to be scaled, it doesn’t require any tuning, it’s easy to regularize, 
-                                      and it outputs well-calibrated predicted probabilities. However, the problem of logistic regression is that when you create a logistic
-                                      model with factor variables as features, it converts each level in the factor into a dummy binary variable of 1's and 0's. 
-                                      For instance, cell shape is a factor with 5 levels. When you use logistic regression model class as a function of cell shape, 
-                                        the cell shape will be split into 4 different binary categorical variables before building the model."),                                      
-                                      actionLink("link3", label="Learn More about Logistic Regression", icon = icon("th"), 
-                                                 onclick ="window.open('https://www.machinelearningplus.com/machine-learning/logistic-regression-tutorial-examples-r/', '_blank')"),
-                                      br(),
-                                      h2("3) Classification Tree:"),
-                                      tags$img(src = "https://46gyn61z4i0t1u1pnq2bbk2e-wpengine.netdna-ssl.com/wp-content/uploads/2018/07/what-is-a-decision-tree.png", 
-                                               width = 200, height = 200, align = "right"),
-                                      h4("When using the classification tree algorithm, we started out with our 
-                                        entire dataset and divided it into several subsets of data. Every divide, 
-                                        or split, was made based on a binary variable, where the only reponses were 
-                                        'Yes' or 'No'. The very first split was made using the binary variable that 
-                                        best separated women with late-stage breast cancer and women who were not 
-                                        in the late stage. We then used the next best binary variable (in terms of 
-                                        separating the late and non-late stage cases) to do our second split. We 
-                                        continued splitting the data in this exact manner until nearly all of the 
-                                        individuals within a subgroup were part of the SAME CLASS. In other words, 
-                                        we kept dividing our data into subests until we had samples where almost 
-                                        all women were either late stage or non-late stage (also known as a nearly 
-                                        'pure' or 'homogenous' samples)."),
-                                      br(),
-                                      h3("Strengths and Weaknesses:"),
-                                      h4(" The classification tree algorithm is easy to use, follow, interpret, and explain.
-                                        However, the question often arises as to how much to split the data, and this
-                                        becomes problematic as there is often no simple answer. Split too much and 
-                                        the data will be overfitted; the model would fit on noise, and predictions
-                                        are thrown off. Split too little and the data would be underfitted; the model 
-                                        won't capture enough of the data’s characteristics and wouldn't be able to 
-                                        distinguish between the two classes."), 
-                                      actionLink("link4", label = "Learn More about Classification Trees", icon = icon("th"), 
-                                                 onclick = "window.open('https://towardsdatascience.com/decision-tree-classification-de64fc4d5aac', '_blank')"),
-                                      br(),
-                                      h2("4) Random Forest:"),
-                                      tags$img(src = "https://blog.lokad.com/images/random-forests.jpg", width = 200, height = 200, align = "right"),
-                                      h4("The random forest algorithm is a model made up of many classification trees.
-                                        Each of the trees is created from a random sample of data (with replacement),
-                                        At each binary split of the data, we randomly select a subset of variables that can 
-                                        potentially be selected to be split on, rather than evaluate all of the predictor 
-                                        variables. Every time we randomly select some variables, we choose the best 
+                              
+                              tabsetPanel(                
+                                  tabPanel("k-Nearest Neighbors",
+                                           h2("k-Nearest Neighbors"),
+                                           br(),
+                                           h3("How this Model Works:"),
+                                           tags$img(src = "https://www.researchgate.net/profile/Saleh_Alaliyat/publication/267953942/figure/fig14/AS:295388776026147@1447437580523/K-nearest-neighbor-algorithm-illustration-The-green-circle-is-the-sample-which-is-to-be.png",
+                                                    width = 450, height = 275, align = "right"),
+                                           h4(tags$ul((tags$li("The goal is to check how closely related a new subject/case is to one of the currently known categories of the outcome")))),
+                                           h4(tags$ul((tags$li("The number of nearest neighbors we want to check is defined by the value 'k'")))),
+                                           h4(tags$ul((tags$li("The known category with the most close neighbors to the new subject/case is the one assigned to this subject")))),
+                                           br(),
+                                           h3("Strengths and Weaknesses:"),
+                                           h4(tags$ul((tags$li("Especially appropriate if the model contains the numeric variables")))),
+                                           h4(tags$ul((tags$li("Easy to use and interpret its results")))),
+                                           h4(tags$ul((tags$li("Works seamlessely as new data is added")))),
+                                           br(),
+                                           actionLink("link", label="Learn More about k-Nearest Neighbors", icon = icon("th"), onclick ="window.open('https://towardsdatascience.com/interpretation-of-kappa-values-2acd1ca7b18f', '_blank')"),
+                                           br()
+                                           ),
+                                  tabPanel('Binary Logistic Regression',
+                                           h2("Binary Logistic Regression"),
+                                           br(),
+                                           h3("How this Model Works:"),
+                                           tags$img(src = "https://lh3.googleusercontent.com/proxy/Sth9Netq6NSlv82nJVLxgC9y1BgviUdmRkVbSTw5NT7DCObjl2GOfQL5EXkI3m8L-MFPkBffx07lJ9oMjA8LbFGH8fExFE7U10cMVbBDakVwq2rdKBZr7vXmBWVg2Cs4wh6U8B_R0LikpMsZ7B2bK6xdlt1hkdo",
+                                                    width = 375, height = 375, align = "right"),
+                                           h4(tags$ul((tags$li("Used to estimate the probability of a certain event occurring such as pass/fail, win/lose, alive/dead")))),
+                                           h4(tags$ul((tags$li("Studies the association between an binary outcome and a set of independent variables/predictors")))),
+                                           h4(tags$ul((tags$li("Used when the dependent variable has only two options/values (i.e. is 'binary')")))),
+                                           h4(tags$ul((tags$li("The probability of a certain event occurring or not is calculated by using a logistic function")))),
+                                           br(),
+                                           h3("Strengths and Weaknesses:"),
+                                           h4(tags$ul((tags$li("Easy to implement and is effective")))),
+                                           h4(tags$ul((tags$li("Scaling and tuning of paramters are not necessary")))),
+                                           h4(tags$ul((tags$li("Poor performance on non-linear data")))),
+                                           h4(tags$ul((tags$li("Poor performance with highly correlated features")))),
+                                           h4(tags$ul((tags$li("Not particularly powerful and is often outperformd by other machine learning algorithms")))),
+                                           br(),
+                                           actionLink("link3", label="Learn More about Logistic Regression", icon = icon("th"), 
+                                                      onclick ="window.open('https://www.machinelearningplus.com/machine-learning/logistic-regression-tutorial-examples-r/', '_blank')"),
+                                           br()
+                                           ),
+                                  tabPanel('Classification Tree',
+                                           h2("Classification Tree"),
+                                           br(),
+                                           h3("How this Model Works:"),
+                                           tags$img(src = "https://46gyn61z4i0t1u1pnq2bbk2e-wpengine.netdna-ssl.com/wp-content/uploads/2018/07/what-is-a-decision-tree.png", 
+                                                    width = 400, height = 300, align = "right"),
+                                           h4(tags$ul((tags$li("We started out with our entire dataset and divided it into several subsets of data")))),
+                                           h4(tags$ul((tags$li("Every divide, or split, was made based on a binary variable, where the only reponses were 
+                                        '                       Yes' or 'No'")))),
+                                           h4(tags$ul((tags$li("The very first split was made using the binary variable that best separated women with late-stage breast cancer 
+                                                                and women who were not in the late stage.")))),
+                                           h4(tags$ul((tags$li("We then used the next best binary variable to do our second split.")))),
+                                           h4(tags$ul((tags$li("We continued splitting the data in this exact manner until nearly all of the individuals within a subgroup were 
+                                                          part of the SAME CLASS.")))),
+                                           br(),
+                                           h3("Strengths and Weaknesses:"),
+                                           h4(tags$ul((tags$li("Easy to use, follow, interpret, and explain")))),
+                                           h4(tags$ul((tags$li("Problematic because there is often uncertainty as to how many splits to do")))),
+                                           h4(tags$ul((tags$li("Split too much and 
+                                              the data will be overfitted; the model would fit on noise, and predictions
+                                              are thrown off")))),
+                                           h4(tags$ul((tags$li("Split too little and the data would be underfitted; the model 
+                                              won't capture enough of the data’s characteristics")))),
+                                           br(),
+                                           actionLink("link4", label = "Learn More about Classification Trees", icon = icon("th"), 
+                                                      onclick = "window.open('https://towardsdatascience.com/decision-tree-classification-de64fc4d5aac', '_blank')"),
+                                           br()
+                                           ),
+                                  tabPanel('Random Forest',
+                                           h2("Random Forest"),
+                                           br(),
+                                           h3("How this Model Works:"),
+                                           tags$img(src = "https://blog.lokad.com/images/random-forests.jpg", width = 350, height = 350, align = "right"),
+                                           h4(tags$ul((tags$li("Consists of many classification trees")))),
+                                           h4(tags$ul((tags$li("Each of the trees is created from a random sample of data (with replacement)")))),
+                                           h4(tags$ul((tags$li("At each binary split of the data, we randomly select a subset of variables (instead of all variables) that can 
+                                        potentially be selected to be split on")))),
+                                           h4(tags$ul((tags$li("Every time we randomly select some variables, we choose the best 
                                         feature/variable out of this random subset and keep splitting until we have a tree 
-                                        with the most 'pure' samples possible. We do this over and over and until we produce 
-                                        many trees. Once we have lots of trees, we then merge all of them together. This 
-                                        prevents overfitting of the data and allows us to determine a stable predictor."),
-                                      br(),
-                                      h3("Strengths and Weaknesses:"),
-                                      h4("The main strength of random forests is that they mitigate the issue of overfitting
-                                         because they are an aggregation of many individual classification trees. By training 
-                                         many (think hundreds) of trees, overall instability is reduced and the important 
-                                         variables contributing to the model can be clearly assessed. Random forets can also
-                                         deal with large amounts of data as well as missing data very well. However, they
-                                         are often time-consuming to build, explain (i.e. not very intuitive), and interpet."),
-                                      actionLink("link5", label = "Learn More about Random Forests", icon = icon("th"), onclick = "window.open('https://towardsdatascience.com/understanding-random-forest-58381e0602d2', '_blank')")
-                             )
-                  )
-        )
-
-
+                                        with the most 'pure' samples possible")))),
+                                           h4(tags$ul((tags$li("We do this over and over and until we produce many trees")))),
+                                           h4(tags$ul((tags$li("Once we have lots of trees, we merge all of them together")))),
+                                           br(),
+                                           h3("Strengths and Weaknesses:"),
+                                           h4(tags$ul((tags$li("Mitigates the issue of overfitting due to aggregation of many individual trees (strength in numbers")))),
+                                           h4(tags$ul((tags$li("Overall instability is reduced and the important variables contributing to the model can be clearly assessed")))),
+                                           h4(tags$ul((tags$li("Ability to deal with large amounts of data as well as missing data very well")))),
+                                           h4(tags$ul((tags$li("Often time-consuming to build, explain, and interpret")))),
+                                           h4(tags$ul((tags$li("Not as intuitive/easy to understand compared to a single decision/classification tree")))),
+                                           br(),
+                                           actionLink("link5", label = "Learn More about Random Forests", icon = icon("th"), onclick = "window.open('https://towardsdatascience.com/understanding-random-forest-58381e0602d2', '_blank')"),
+                                           br()
+                                         )
+                                )
+                      )
+          )
+)
 
 # Server
 
@@ -311,11 +316,12 @@ server <- function(input, output) {
     na.omit(tidydat) %>%
       filter(str_remove(city, " city") == input$CityName)
   })
+  
   observe(tidydat_reactive())
   
   
-  
   ######################### data split for kNN and calssification tree #########################
+  
   knn_split<- reactive({
     if (input$select=="Pre-surgery"){
       TRAIN<-knn.train.pre
@@ -329,6 +335,7 @@ server <- function(input, output) {
     }})
   
   ######################### data split for random forest and logistic  #########################
+  
   rf_split<- reactive({
     if (input$select=="Pre-surgery"){
       TRAIN<-train.pre.dummy
@@ -341,10 +348,9 @@ server <- function(input, output) {
       return(list(TRAIN,TEST))
     }})
   
-  
-  
   ######################### return a confusion matrix output: knn #########################
-  knn_pre<-reactive({
+  
+  knn_pre <- reactive({
     set.seed(123)
     TRAIN<-knn_split()[[1]]
     TEST<-knn_split()[[2]]
@@ -354,27 +360,28 @@ server <- function(input, output) {
                      test = TEST,
                      cl = train_labels,
                      k = 19)
-    test_pred<-as.factor(if_else(as.factor(test_pred)=="0","Early Stage", "Late Stage"))
-    test_labels<-as.factor(if_else(as.factor(test_labels)=="0","Early Stage", "Late Stage"))
-    confusionMatrix(as.factor(test_pred),as.factor(test_labels),positive = "Late Stage")
+    test_pred <- as.factor(if_else(as.factor(test_pred) == "0", "Early Stage", "Late Stage"))
+    test_labels <- as.factor(if_else(as.factor(test_labels) == "0","Early Stage", "Late Stage"))
+    confusionMatrix(as.factor(test_pred),as.factor(test_labels), positive = "Late Stage")
   })
   
-  
   ######################### return a confusion matrix output: logistic #########################
-  log_pre<-reactive({
+  
+  log_pre <- reactive({
     set.seed(123)
     TRAIN<-rf_split()[[1]]
     TEST<-rf_split()[[2]]
-    glm.fit <- glm(finalClinicalStage~.,TRAIN,family = "binomial")
+    glm.fit <- glm(finalClinicalStage ~ .,TRAIN,family = "binomial")
     #summary(glm.fit)
     glm.prediction <- predict(glm.fit, TEST, type = "response")
-    predicted <- as.factor(if_else(as.factor(if_else(glm.prediction <= 0.85, 0, 1))=="0","Early Stage", "Late Stage"))
+    predicted <- as.factor(if_else(as.factor(if_else(glm.prediction <= 0.85, 0, 1)) == "0", "Early Stage", "Late Stage"))
     truth <- as.factor(TEST$finalClinicalStage)
     confusionMatrix(predicted, truth, positive = "Late Stage")
   })
   
   ######################### return a confusion matrix output: Classification tree #########################
-  tree_pre<-reactive({
+  
+  tree_pre <- reactive({
     set.seed(123)
     TRAIN<-rf_split()[[1]]
     TEST<-rf_split()[[2]]
@@ -385,24 +392,23 @@ server <- function(input, output) {
   })
   
   ######################### return a confusion matrix output:random forest  #########################
-  rf_pre<- reactive({
-    TRAIN<-rf_split()[[1]]
-    TEST<-rf_split()[[2]]
+  
+  rf_pre <- reactive({
+    TRAIN <- rf_split()[[1]]
+    TEST <- rf_split()[[2]]
     set.seed(123)
-    m1<-randomForest(as.factor(finalClinicalStage)~.,data=TRAIN,ntree =100,importance = T) 
-    pred1<-predict(m1,TEST) 
+    m1 <- randomForest(as.factor(finalClinicalStage)~.,data=TRAIN,ntree =100,importance = T) 
+    pred1 <- predict(m1,TEST) 
     confusionMatrix(pred1,as.factor(TEST$finalClinicalStage),positive = "Late Stage")
-  }
-  )
+    })
   
-  output$knn<-renderPrint({knn_pre()})
-  output$log<-renderPrint({log_pre()})
-  output$tree<-renderPrint({tree_pre()})
-  output$rf<-renderPrint({rf_pre()})
-  
-  
-  
+  output$knn <- renderPrint({knn_pre()})
+  output$log <- renderPrint({log_pre()})
+  output$tree <- renderPrint({tree_pre()})
+  output$rf <- renderPrint({rf_pre()})
+
   ############ comments for outputs ########################################
+  
   output$c1 <- renderText({
     if (input$select == "Pre-surgery"){
       print(
@@ -453,10 +459,10 @@ server <- function(input, output) {
             The kappa means frequently used to test interrater reliability. The importance of
             rater reliability lies in the fact that it represents the extent to which the data
             collected in the study are correct representations of the variables measured."
-        
       )
     }
   })
+  
   output$c3 <- renderText({
     if (input$select == "Pre-surgery"){
       print(
@@ -521,21 +527,17 @@ server <- function(input, output) {
   })
   
   ######################### plots for the EDA tab   #########################
+  
   output$t <- renderTable({
     tidydat_reactive() %>%
       summarise(`Median Income`=median(MedianIncome),
                 `Mean Age` = mean(Age),
-                `Hispanic Proportion`=sum(Hispanic)/length(Hispanic),
-                `Late Stage Ratio`=sum(finalClinicalStage>=3)/length(finalClinicalStage),
-                `N=Sample Size`=length(Hispanic)
+                `Hispanic Proportion` = sum(Hispanic)/length(Hispanic),
+                `Late Stage Ratio` = sum(finalClinicalStage >= 3)/length(finalClinicalStage),
+                `N = Sample Size` = length(Hispanic)
                 
       )
   })
-  
-  output$prcomp <- renderPlot({
-    plot_prcomp(tidydat_reactive())
-  })
-  
   
   output$hist <- renderPlot({
     plot_histogram(tidydat_reactive(), ncol = 2)
@@ -551,6 +553,7 @@ server <- function(input, output) {
   
   
   ###################### Mapping ###################
+  
   output$map <- renderLeaflet({ 
     
     tidycensus::census_api_key
@@ -563,10 +566,10 @@ server <- function(input, output) {
     #saveRDS(uninsured,"uninsured.rds") save to local 
     
     #######load counties data ############
-    FL=tigris::places(state = "FL")
+    FL = tigris::places(state = "FL")
     #saveRDS(FL,"FL.rds")
     #FL<-readRDS("~/Documents/bst692/bst692_group2_breastCA/final project/FL.rds")
-    FL_SF=sf::st_as_sf(FL)
+    FL_SF = sf::st_as_sf(FL)
     
     uninsured_FL=FL_SF %>% 
       left_join(uninsured,by="GEOID")
@@ -575,13 +578,13 @@ server <- function(input, output) {
     
     leaflet() %>% 
       addProviderTiles(providers$Esri.NatGeoWorldMap) %>% 
-      addPolygons(data=uninsured_FL,
+      addPolygons(data = uninsured_FL,
                   fillColor = ~pal(estimate),
                   color = "black",
-                  popup=  uninsured_FL$NAMELSAD) %>% 
+                  popup = uninsured_FL$NAMELSAD) %>% 
       addLegend(position = "topright",
-                pal=pal,
-                values= uninsured_FL$estimate)
+                pal = pal,
+                values = uninsured_FL$estimate)
   })
   
 }
